@@ -1,0 +1,55 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Aug  4 21:13:49 2022
+
+@author: paolo Panicali
+"""
+
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Sat Jan 23 17:36:50 2021
+
+@author: paolo
+"""
+
+# Import libraries
+from flask import Flask, request, jsonify
+import json
+import urllib.request
+import datetime as dt
+from datetime import datetime
+
+app = Flask(__name__)
+
+@app.route('/hello',methods=['POST'])
+def hello_world():
+    return 'Hello World method'
+
+@app.route('/api',methods=['POST'])
+def predict():
+    # POST request.
+    data = request.get_json(force=True)
+    City=data['CityName']
+    Today_Date=data["Date"]
+    Today_Datetime = datetime.strptime(Today_Date, '%Y-%m-%d')
+    Yesterday_Date=(Today_Datetime - dt.timedelta(days=1)).strftime('%Y-%m-%d')
+    Url="https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/"
+    Separator="/"
+    Key="?unitGroup=metric&elements=datetime%2Ctemp&include=days&key=YOURKEY&contentType=json"
+    Request=Url+City+Separator+Yesterday_Date+Separator+Today_Date+Key
+    ResultBytes = urllib.request.urlopen(Request).read().decode('UTF-8')
+    jsonData = json.loads(ResultBytes)
+    Temp_yesterday=jsonData["days"][0]["temp"]
+    Temp_today=jsonData["days"][1]["temp"]
+    if Temp_today>Temp_yesterday:
+        Signal=1
+    else:
+        Signal=0 
+
+    return jsonify(Signal)
+
+
+
+if __name__ == '__main__':
+    app.run(port=5000, debug=True)
