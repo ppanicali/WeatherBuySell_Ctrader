@@ -1,0 +1,63 @@
+using System;
+using cAlgo.API;
+using cAlgo.API.Indicators;
+using cAlgo.API.Internals;
+using cAlgo.Indicators;
+using System.Web.Script.Serialization;
+using System.Net;
+
+namespace cAlgo.Robots
+{
+    [Robot(TimeZone = TimeZones.UTC, AccessRights = AccessRights.FullAccess)]
+    public class WebApp : Robot
+    {
+        [Parameter(DefaultValue = "Paris")]
+        public string City_Name { get; set; }
+
+        protected override void OnBar()
+        {
+            Data_WebApp OutPutData = new Data_WebApp();
+            OutPutData.CityName = City_Name;
+            OutPutData.Date = Bars.OpenTimes.LastValue.ToString("yyyy-MM-dd");
+            Print(OutPutData.Date);
+
+            //THIS IS THE REQUEST
+            var json = new JavaScriptSerializer().Serialize(OutPutData);
+            var url = "http://127.0.0.1:5000/api";
+            string response = new WebClient().UploadString(url, json);
+
+            // If yesterday temperature in Paris was higher than 2 days ago then buy otherwise sell
+            // close prev day trade
+            if (Bars.OpenTimes.Last(1).Day == Bars.OpenTimes.LastValue.AddDays(-1).Day)
+            {
+                Closealltrades();
+
+                if (Int32.Parse(response) == 1)
+                {
+                    ExecuteMarketOrder(TradeType.Buy, Symbol, 1000, "Buy" + Symbol.Name, 50, 75);
+                }
+                if (Int32.Parse(response) == 0)
+                {
+                    ExecuteMarketOrder(TradeType.Sell, Symbol, 1000, "Sell" + Symbol.Name, 50, 75);
+                }
+            }
+        }
+
+
+        private void Closealltrades()
+        {
+            foreach (var position in Positions)
+            {
+                ClosePosition(position);
+            }
+        }
+
+        public class Data_WebApp
+        {
+            public string CityName;
+            public string Date;
+        }
+
+
+    }
+}
